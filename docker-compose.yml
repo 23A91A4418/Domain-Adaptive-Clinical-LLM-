@@ -1,0 +1,38 @@
+services:
+  trainer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: clinical_llm_trainer
+    volumes:
+      - ./src:/workspace/src
+      - ./data:/workspace/data
+      - ./results:/workspace/results
+      - ./output:/workspace/output
+      - ./docs:/workspace/docs
+    environment:
+      - BASE_MODEL_NAME=${BASE_MODEL_NAME:-google/flan-t5-base}
+      - HF_TOKEN=${HF_TOKEN:-}
+      - LEARNING_RATE=${LEARNING_RATE:-3e-4}
+      - UNSTABLE_LEARNING_RATE=${UNSTABLE_LEARNING_RATE:-1e-1}
+      - LORA_RANK=${LORA_RANK:-16}
+      - LORA_ALPHA=${LORA_ALPHA:-32}
+      - LORA_DROPOUT=${LORA_DROPOUT:-0.05}
+      - NUM_EPOCHS=${NUM_EPOCHS:-3}
+      - BATCH_SIZE=${BATCH_SIZE:-2}
+      - MAX_SOURCE_LENGTH=${MAX_SOURCE_LENGTH:-512}
+      - MAX_TARGET_LENGTH=${MAX_TARGET_LENGTH:-128}
+    entrypoint: ["/bin/bash", "/workspace/src/main.sh"]
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import torch; print('CUDA available:', torch.cuda.is_available())\" && test -f /workspace/src/main.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
